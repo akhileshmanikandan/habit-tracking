@@ -32,6 +32,27 @@ export default function HabitsPage() {
   const isLoading = groupLoading || loading;
   const myHabits = habits.filter((h) => h.creator_id === userId);
 
+  // No group yet — prompt user to create/join one first
+  if (!groupLoading && !group) {
+    return (
+      <div className="p-4 flex flex-col items-center justify-center py-20 gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-sage/10 flex items-center justify-center">
+          <Plus weight="light" className="w-8 h-8 text-sage" />
+        </div>
+        <p className="text-sm text-earth-light text-center max-w-xs">
+          You need to create or join a group before adding habits.
+        </p>
+        <motion.a
+          href="/profile"
+          whileTap={{ scale: 0.95 }}
+          className="px-5 py-2.5 rounded-xl bg-moss text-cream text-sm font-semibold"
+        >
+          Go to Profile
+        </motion.a>
+      </div>
+    );
+  }
+
   const getStreak = (habitId: string) => {
     return streaks.find((s) => s.habit_id === habitId);
   };

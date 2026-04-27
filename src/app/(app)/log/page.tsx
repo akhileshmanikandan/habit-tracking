@@ -23,7 +23,11 @@ export default function LogPage() {
     is_rest_day: boolean;
   }) => {
     const supabase = createClient();
-    await supabase.from("logs").insert(log);
+    const { error: logError } = await supabase.from("logs").insert(log);
+    if (logError) {
+      console.error("Failed to insert log:", logError);
+      return;
+    }
     await supabase.rpc("update_streak", {
       p_user_id: log.user_id,
       p_habit_id: log.habit_id,

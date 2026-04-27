@@ -80,14 +80,17 @@ export default function MarathonPage() {
     if (!group || !targetKm) return;
     const supabase = createClient();
     const today = new Date().toISOString().split("T")[0];
-    await supabase.from("marathon_goals").insert({
+    const { data: newGoal, error } = await supabase.from("marathon_goals").insert({
       group_id: group.id,
       title: goalTitle,
       target_km: parseFloat(targetKm),
       start_date: today,
       end_date: endDate || today,
-    });
-    window.location.reload();
+    }).select().single();
+    if (!error && newGoal) {
+      setGoal(newGoal);
+      setShowSetup(false);
+    }
   };
 
   if (loading) {

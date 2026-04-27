@@ -111,26 +111,28 @@ export function useGroup() {
     fetchGroup();
   }, []);
 
-  const createGroup = async (name: string) => {
+  const createGroup = async (name: string): Promise<{ data: Group | null; error: Error | null }> => {
     const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: new Error("Not authenticated") };
+    if (!user) return { data: null, error: new Error("Not authenticated") };
 
-    // Insert group (no .select() — avoid RLS timing issues)
+    // Insert group
     const { data: newGroup, error } = await supabase
       .from("groups")
       .insert({ name })
       .select()
       .single();
 
-    if (error || !newGroup) return { data: null, error };
+    if (error || !newGroup) return { data: null, error: error ? new Error(error.message) : new Error("Failed to create group") };
 
     // Add self as member
-    await supabase
+    const { error: memberError } = await supabase
       .from("group_members")
       .insert({ group_id: newGroup.id, user_id: user.id });
+
+    if (memberError) return { data: null, error: new Error(memberError.message) };
 
     // Fetch own profile to populate members
     const { data: profile } = await supabase
@@ -144,24 +146,36 @@ export function useGroup() {
     return { data: newGroup, error: null };
   };
 
-  const joinGroup = async (inviteCode: string) => {
+  const joinGroup = async (inviteCode: string): Promise<{ data: Group | null; error: Error | null }> => {
     const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: new Error("Not authenticated") };
+    if (!user) return { data: null, error: new Error("Not authenticated") };
 
-    const { data: foundGroup } = await supabase
+    const { data: foundGroup, error: findError } = await supabase
       .from("groups")
       .select("*")
       .eq("invite_code", inviteCode)
       .single();
 
-    if (!foundGroup) return { error: new Error("Group not found") };
+    if (findError || !foundGroup) return { data: null, error: new Error("Group not found. Check the invite code and try again.") };
 
-    await supabase
+    // Check if already a member
+    const { data: existing } = await supabase
       .from("group_members")
-      .insert({ group_id: foundGroup.id, user_id: user.id });
+      .select("group_id")
+      .eq("group_id", foundGroup.id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (!existing) {
+      const { error: joinError } = await supabase
+        .from("group_members")
+        .insert({ group_id: foundGroup.id, user_id: user.id });
+      if (joinError) return { data: null, error: new Error(joinError.message) };
+    }
+
     // Fetch all members of the group
     const { data: memberRows } = await supabase
       .from("group_members")

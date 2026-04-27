@@ -196,7 +196,7 @@ export default function ForestPage() {
   };
 
   // Log handler
-  const handleLog = async (log: Parameters<typeof import("@/lib/hooks/useHabits").useLogs>["0"] extends string ? never : {
+  const handleLog = async (log: {
     habit_id: string;
     user_id: string;
     value: number | null;
@@ -205,7 +205,11 @@ export default function ForestPage() {
     is_rest_day: boolean;
   }) => {
     const supabase = createClient();
-    await supabase.from("logs").insert(log);
+    const { error: logError } = await supabase.from("logs").insert(log);
+    if (logError) {
+      console.error("Failed to insert log:", logError);
+      return;
+    }
     await supabase.rpc("update_streak", {
       p_user_id: log.user_id,
       p_habit_id: log.habit_id,
@@ -334,21 +338,31 @@ function OnboardingView({
   createGroup,
   joinGroup,
 }: {
-  createGroup: (name: string) => Promise<{ data?: unknown; error?: unknown }>;
-  joinGroup: (code: string) => Promise<{ data?: unknown; error?: unknown }>;
+  createGroup: (name: string) => Promise<{ data: unknown | null; error: Error | null }>;
+  joinGroup: (code: string) => Promise<{ data: unknown | null; error: Error | null }>;
 }) {
   const [mode, setMode] = useState<"choose" | "create" | "join">("choose");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
-    await createGroup(name.trim());
+    setLoading(true);
+    setError(null);
+    const result = await createGroup(name.trim());
+    if (result.error) setError(result.error.message);
+    setLoading(false);
   };
 
   const handleJoin = async () => {
     if (!code.trim()) return;
-    await joinGroup(code.trim());
+    setLoading(true);
+    setError(null);
+    const result = await joinGroup(code.trim());
+    if (result.error) setError(result.error.message);
+    setLoading(false);
   };
 
   return (
@@ -358,6 +372,10 @@ function OnboardingView({
       <p className="text-sm text-earth-light text-center max-w-xs">
         Start a group with your friends or join an existing one.
       </p>
+
+      {error && (
+        <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 max-w-xs text-center">{error}</p>
+      )}
 
       {mode === "choose" && (
         <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -391,10 +409,10 @@ function OnboardingView({
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleCreate}
-            disabled={!name.trim()}
+            disabled={!name.trim() || loading}
             className="py-3.5 rounded-xl bg-moss text-cream font-semibold disabled:opacity-50"
           >
-            Create
+            {loading ? "Creating..." : "Create"}
           </motion.button>
           <button onClick={() => setMode("choose")} className="text-sm text-earth-light">
             ← Back
@@ -415,10 +433,10 @@ function OnboardingView({
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleJoin}
-            disabled={!code.trim()}
+            disabled={!code.trim() || loading}
             className="py-3.5 rounded-xl bg-moss text-cream font-semibold disabled:opacity-50"
           >
-            Join Group
+            {loading ? "Joining..." : "Join Group"}
           </motion.button>
           <button onClick={() => setMode("choose")} className="text-sm text-earth-light">
             ← Back
