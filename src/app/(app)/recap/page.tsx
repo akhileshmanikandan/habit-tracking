@@ -6,8 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useGroup } from "@/lib/hooks/useAuth";
 import { Trophy, TrendUp, Lightning, Fire, Crown } from "@phosphor-icons/react";
 
-const supabase = createClient();
-
 interface RecapAward {
   title: string;
   emoji: string;
@@ -27,6 +25,7 @@ export default function RecapPage() {
     if (!group || members.length === 0) return;
 
     const generateRecap = async () => {
+      const supabase = createClient();
       const now = new Date();
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);

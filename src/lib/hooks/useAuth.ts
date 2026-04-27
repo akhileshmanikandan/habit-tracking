@@ -72,7 +72,10 @@ export function useGroup() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       const { data: membership } = await supabase
         .from("group_members")

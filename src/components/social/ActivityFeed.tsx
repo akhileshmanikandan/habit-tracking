@@ -7,8 +7,6 @@ import { useAuth, useGroup } from "@/lib/hooks/useAuth";
 import { haptics } from "@/lib/utils/haptics";
 import { Fire, HandFist, SmileyAngry, Drop } from "@phosphor-icons/react";
 
-const supabase = createClient();
-
 const REACTION_OPTIONS = [
   { type: "fire", icon: <Fire weight="fill" className="w-5 h-5" />, label: "🔥" },
   { type: "flex", icon: <HandFist weight="fill" className="w-5 h-5" />, label: "💪" },
@@ -39,6 +37,7 @@ export function ActivityFeed() {
     if (!group) return;
 
     const fetchFeed = async () => {
+      const supabase = createClient();
       const oneDayAgo = new Date();
       oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
@@ -87,6 +86,7 @@ export function ActivityFeed() {
 
   const sendReaction = async (toUserId: string, logId: string, type: string) => {
     if (!userId) return;
+    const supabase = createClient();
     await supabase.from("reactions").insert({
       from_user_id: userId,
       to_user_id: toUserId,

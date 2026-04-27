@@ -7,8 +7,6 @@ import { useHabits } from "@/lib/hooks/useHabits";
 import { LogDrawer } from "@/components/logging/LogDrawer";
 import { createClient } from "@/lib/supabase/client";
 
-const supabase = createClient();
-
 export default function LogPage() {
   const router = useRouter();
   const { userId } = useAuth();
@@ -24,6 +22,7 @@ export default function LogPage() {
     notes: string | null;
     is_rest_day: boolean;
   }) => {
+    const supabase = createClient();
     await supabase.from("logs").insert(log);
     await supabase.rpc("update_streak", {
       p_user_id: log.user_id,

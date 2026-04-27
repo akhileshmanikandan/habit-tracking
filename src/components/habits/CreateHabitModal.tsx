@@ -59,7 +59,7 @@ export function CreateHabitModal({ open, onClose, onCreate }: CreateHabitModalPr
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40"
       onClick={onClose}
     >
       <motion.div
@@ -68,7 +68,7 @@ export function CreateHabitModal({ open, onClose, onCreate }: CreateHabitModalPr
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-t-3xl bg-cream p-6 pb-10 space-y-5"
+        className="w-full max-w-lg rounded-t-3xl bg-cream p-6 pb-28 space-y-5"
       >
         <div className="mx-auto w-12 h-1.5 rounded-full bg-earth/20 mb-2" />
         <h2 className="text-lg font-bold text-moss">New Habit</h2>

@@ -24,11 +24,12 @@ const CATEGORY_COLORS: Record<HabitCategory, string> = {
 
 export default function HabitsPage() {
   const { userId } = useAuth();
-  const { group } = useGroup();
+  const { group, loading: groupLoading } = useGroup();
   const { habits, createHabit, deleteHabit, loading } = useHabits(group?.id);
   const { streaks } = useStreaks(userId || undefined);
   const [showCreate, setShowCreate] = useState(false);
 
+  const isLoading = groupLoading || loading;
   const myHabits = habits.filter((h) => h.creator_id === userId);
 
   const getStreak = (habitId: string) => {
@@ -42,16 +43,18 @@ export default function HabitsPage() {
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => {
+            if (!group) return;
             setShowCreate(true);
             haptics.light();
           }}
-          className="w-10 h-10 rounded-xl bg-moss text-cream flex items-center justify-center shadow-md shadow-moss/20"
+          disabled={!group}
+          className="w-10 h-10 rounded-xl bg-moss text-cream flex items-center justify-center shadow-md shadow-moss/20 disabled:opacity-40"
         >
           <Plus weight="bold" className="w-5 h-5" />
         </motion.button>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-20 rounded-xl bg-white/40 animate-pulse" />
@@ -156,7 +159,10 @@ export default function HabitsPage() {
             open={showCreate}
             onClose={() => setShowCreate(false)}
             onCreate={async (habit) => {
-              if (!userId || !group) return;
+              if (!userId || !group) {
+                console.error("Cannot create habit: user or group not loaded");
+                return;
+              }
               await createHabit({
                 ...habit,
                 creator_id: userId,

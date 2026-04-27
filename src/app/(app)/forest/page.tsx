@@ -13,8 +13,6 @@ import { haptics } from "@/lib/utils/haptics";
 import { Droplets } from "lucide-react";
 import { Tree } from "@phosphor-icons/react";
 
-const supabase = createClient();
-
 export default function ForestPage() {
   const { user, userId } = useAuth();
   const { group, members, loading: groupLoading, createGroup, joinGroup } = useGroup();
@@ -39,6 +37,7 @@ export default function ForestPage() {
     if (!group || members.length === 0) return;
 
     const fetchForestData = async () => {
+      const supabase = createClient();
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       const today = new Date().toISOString().split("T")[0];
@@ -187,6 +186,7 @@ export default function ForestPage() {
   // Water a friend's plot
   const handleWater = async (targetUserId: string) => {
     if (!userId || targetUserId === userId) return;
+    const supabase = createClient();
     await supabase.from("reactions").insert({
       from_user_id: userId,
       to_user_id: targetUserId,
@@ -204,6 +204,7 @@ export default function ForestPage() {
     notes: string | null;
     is_rest_day: boolean;
   }) => {
+    const supabase = createClient();
     await supabase.from("logs").insert(log);
     await supabase.rpc("update_streak", {
       p_user_id: log.user_id,

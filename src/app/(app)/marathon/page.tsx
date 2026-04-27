@@ -8,8 +8,6 @@ import { daysUntil } from "@/lib/utils/pace-calculator";
 import { Timer, TrendUp, Users, Ghost } from "@phosphor-icons/react";
 import type { MarathonGoal, Profile } from "@/lib/supabase/types";
 
-const supabase = createClient();
-
 interface MemberDistance {
   member: Profile;
   totalKm: number;
@@ -33,6 +31,7 @@ export default function MarathonPage() {
     if (!group) return;
 
     const fetchMarathonData = async () => {
+      const supabase = createClient();
       // Get marathon goal
       const { data: goals } = await supabase
         .from("marathon_goals")
@@ -79,6 +78,7 @@ export default function MarathonPage() {
 
   const handleCreateGoal = async () => {
     if (!group || !targetKm) return;
+    const supabase = createClient();
     const today = new Date().toISOString().split("T")[0];
     await supabase.from("marathon_goals").insert({
       group_id: group.id,

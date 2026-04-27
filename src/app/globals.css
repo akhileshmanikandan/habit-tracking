@@ -149,4 +149,10 @@
   .glass-dark {
     @apply backdrop-blur-xl bg-black/10 border border-white/10 shadow-lg;
   }
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
