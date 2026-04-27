@@ -6,16 +6,17 @@ import { createClient } from "@/lib/supabase/client";
 import { ForestCanvas } from "@/components/forest/ForestCanvas";
 import { buildPlotLayouts, type PlotLayout } from "@/lib/forest/isometric-grid";
 import { LogDrawer } from "@/components/logging/LogDrawer";
-import { useAuth, useGroup } from "@/lib/hooks/useAuth";
-import { useHabits, useLogs } from "@/lib/hooks/useHabits";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useGroupContext } from "@/lib/hooks/useGroupContext";
+import { useHabits } from "@/lib/hooks/useHabits";
 import { useRealtimeReactions } from "@/lib/hooks/useRealtime";
 import { haptics } from "@/lib/utils/haptics";
 import { Droplets } from "lucide-react";
 import { Tree } from "@phosphor-icons/react";
 
 export default function ForestPage() {
-  const { user, userId, loading: authLoading } = useAuth();
-  const { group, members, loading: groupLoading, createGroup, joinGroup } = useGroup();
+  const { user, userId } = useAuth();
+  const { activeGroup: group, members } = useGroupContext();
   const { habits } = useHabits(group?.id);
 
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
@@ -216,21 +217,6 @@ export default function ForestPage() {
     });
   };
 
-  // Loading state — show while auth or group data is being fetched
-  if (authLoading || groupLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
-        <Tree weight="fill" className="w-10 h-10 text-sage animate-pulse" />
-        <p className="text-sm text-earth-light">Loading your forest...</p>
-      </div>
-    );
-  }
-
-  // Onboarding state: no group yet
-  if (!group) {
-    return <OnboardingView createGroup={createGroup} joinGroup={joinGroup} />;
-  }
-
   const myHabits = habits.filter((h) => h.creator_id === userId);
 
   // Group exists but no habits yet — prompt to create
@@ -340,119 +326,6 @@ export default function ForestPage() {
         userId={userId || ""}
         onLog={handleLog}
       />
-    </div>
-  );
-}
-
-function OnboardingView({
-  createGroup,
-  joinGroup,
-}: {
-  createGroup: (name: string) => Promise<{ data: unknown | null; error: Error | null }>;
-  joinGroup: (code: string) => Promise<{ data: unknown | null; error: Error | null }>;
-}) {
-  const [mode, setMode] = useState<"choose" | "create" | "join">("choose");
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleCreate = async () => {
-    if (!name.trim()) return;
-    setLoading(true);
-    setError(null);
-    const result = await createGroup(name.trim());
-    if (result.error) setError(result.error.message);
-    setLoading(false);
-  };
-
-  const handleJoin = async () => {
-    if (!code.trim()) return;
-    setLoading(true);
-    setError(null);
-    const result = await joinGroup(code.trim());
-    if (result.error) setError(result.error.message);
-    setLoading(false);
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
-      <Tree weight="fill" className="w-12 h-12 text-sage" />
-      <h1 className="text-2xl font-bold text-moss">Welcome to Lock In</h1>
-      <p className="text-sm text-earth-light text-center max-w-xs">
-        Start a group with your friends or join an existing one.
-      </p>
-
-      {error && (
-        <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 max-w-xs text-center">{error}</p>
-      )}
-
-      {mode === "choose" && (
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setMode("create")}
-            className="py-3.5 rounded-xl bg-moss text-cream font-semibold"
-          >
-            Create a Group
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setMode("join")}
-            className="py-3.5 rounded-xl bg-white/60 border border-white/40 text-moss font-semibold"
-          >
-            Join with Code
-          </motion.button>
-        </div>
-      )}
-
-      {mode === "create" && (
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Group name (e.g. Team Sprinters)"
-            className="px-4 py-3 rounded-xl bg-white/60 border border-white/40 text-moss font-semibold focus:outline-none focus:ring-2 focus:ring-sage"
-            autoFocus
-          />
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleCreate}
-            disabled={!name.trim() || loading}
-            className="py-3.5 rounded-xl bg-moss text-cream font-semibold disabled:opacity-50"
-          >
-            {loading ? "Creating..." : "Create"}
-          </motion.button>
-          <button onClick={() => setMode("choose")} className="text-sm text-earth-light">
-            ← Back
-          </button>
-        </div>
-      )}
-
-      {mode === "join" && (
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          <input
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="Invite code"
-            className="px-4 py-3 rounded-xl bg-white/60 border border-white/40 text-moss font-semibold focus:outline-none focus:ring-2 focus:ring-sage uppercase tracking-wider text-center"
-            autoFocus
-          />
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleJoin}
-            disabled={!code.trim() || loading}
-            className="py-3.5 rounded-xl bg-moss text-cream font-semibold disabled:opacity-50"
-          >
-            {loading ? "Joining..." : "Join Group"}
-          </motion.button>
-          <button onClick={() => setMode("choose")} className="text-sm text-earth-light">
-            ← Back
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, useGroup } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useGroupContext } from "@/lib/hooks/useGroupContext";
 import { useHabits } from "@/lib/hooks/useHabits";
 import { LogDrawer } from "@/components/logging/LogDrawer";
 import { createClient } from "@/lib/supabase/client";
@@ -10,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 export default function LogPage() {
   const router = useRouter();
   const { userId } = useAuth();
-  const { group } = useGroup();
+  const { activeGroup: group } = useGroupContext();
   const { habits } = useHabits(group?.id);
   const myHabits = habits.filter((h) => h.creator_id === userId);
 

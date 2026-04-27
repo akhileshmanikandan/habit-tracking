@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { useGroup } from "@/lib/hooks/useAuth";
+import { useGroupContext } from "@/lib/hooks/useGroupContext";
 import { Trophy, TrendUp, Lightning, Fire, Crown } from "@phosphor-icons/react";
 
 interface RecapAward {
@@ -16,7 +16,7 @@ interface RecapAward {
 }
 
 export default function RecapPage() {
-  const { group, members } = useGroup();
+  const { activeGroup: group, members } = useGroupContext();
   const [awards, setAwards] = useState<RecapAward[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekLabel, setWeekLabel] = useState("");

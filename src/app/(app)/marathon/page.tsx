@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { useAuth, useGroup } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useGroupContext } from "@/lib/hooks/useGroupContext";
 import { daysUntil } from "@/lib/utils/pace-calculator";
 import { Timer, TrendUp, Users, Ghost } from "@phosphor-icons/react";
 import type { MarathonGoal, Profile } from "@/lib/supabase/types";
@@ -16,7 +17,7 @@ interface MemberDistance {
 
 export default function MarathonPage() {
   const { userId } = useAuth();
-  const { group, members } = useGroup();
+  const { activeGroup: group, members } = useGroupContext();
   const [goal, setGoal] = useState<MarathonGoal | null>(null);
   const [memberDistances, setMemberDistances] = useState<MemberDistance[]>([]);
   const [loading, setLoading] = useState(true);

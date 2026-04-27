@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { useAuth, useGroup } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useGroupContext } from "@/lib/hooks/useGroupContext";
 import { haptics } from "@/lib/utils/haptics";
 import { Fire, HandFist, SmileyAngry, Drop } from "@phosphor-icons/react";
 
@@ -30,7 +31,7 @@ interface FeedEntry {
 
 export function ActivityFeed() {
   const { userId } = useAuth();
-  const { group } = useGroup();
+  const { activeGroup: group } = useGroupContext();
   const [entries, setEntries] = useState<FeedEntry[]>([]);
 
   useEffect(() => {
