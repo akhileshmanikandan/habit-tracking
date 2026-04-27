@@ -13,19 +13,24 @@ export function useAuth() {
     const supabase = createClient();
 
     const getUser = async () => {
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-      if (authUser) {
-        setUserId(authUser.id);
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", authUser.id)
-          .single();
-        if (profile) setUser(profile);
+      try {
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+        if (authUser) {
+          setUserId(authUser.id);
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", authUser.id)
+            .single();
+          if (profile) setUser(profile);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     getUser();
 
@@ -69,44 +74,49 @@ export function useGroup() {
     const supabase = createClient();
 
     const fetchGroup = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: membership } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user.id)
-        .limit(1)
-        .single();
-
-      if (membership) {
-        const { data: groupData } = await supabase
-          .from("groups")
-          .select("*")
-          .eq("id", membership.group_id)
-          .single();
-        if (groupData) setGroup(groupData);
-
-        const { data: memberRows } = await supabase
-          .from("group_members")
-          .select("user_id")
-          .eq("group_id", membership.group_id);
-
-        if (memberRows) {
-          const userIds = memberRows.map((m: { user_id: string }) => m.user_id);
-          const { data: profiles } = await supabase
-            .from("profiles")
-            .select("*")
-            .in("id", userIds);
-          if (profiles) setMembers(profiles);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          setLoading(false);
+          return;
         }
+
+        const { data: membership } = await supabase
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", user.id)
+          .limit(1)
+          .single();
+
+        if (membership) {
+          const { data: groupData } = await supabase
+            .from("groups")
+            .select("*")
+            .eq("id", membership.group_id)
+            .single();
+          if (groupData) setGroup(groupData);
+
+          const { data: memberRows } = await supabase
+            .from("group_members")
+            .select("user_id")
+            .eq("group_id", membership.group_id);
+
+          if (memberRows) {
+            const userIds = memberRows.map((m: { user_id: string }) => m.user_id);
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("*")
+              .in("id", userIds);
+            if (profiles) setMembers(profiles);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch group:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchGroup();
   }, []);

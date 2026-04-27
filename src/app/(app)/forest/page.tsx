@@ -14,7 +14,7 @@ import { Droplets } from "lucide-react";
 import { Tree } from "@phosphor-icons/react";
 
 export default function ForestPage() {
-  const { user, userId } = useAuth();
+  const { user, userId, loading: authLoading } = useAuth();
   const { group, members, loading: groupLoading, createGroup, joinGroup } = useGroup();
   const { habits } = useHabits(group?.id);
 
@@ -216,15 +216,25 @@ export default function ForestPage() {
     });
   };
 
+  // Loading state — show while auth or group data is being fetched
+  if (authLoading || groupLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <Tree weight="fill" className="w-10 h-10 text-sage animate-pulse" />
+        <p className="text-sm text-earth-light">Loading your forest...</p>
+      </div>
+    );
+  }
+
   // Onboarding state: no group yet
-  if (!groupLoading && !group) {
+  if (!group) {
     return <OnboardingView createGroup={createGroup} joinGroup={joinGroup} />;
   }
 
   const myHabits = habits.filter((h) => h.creator_id === userId);
 
   // Group exists but no habits yet — prompt to create
-  if (!groupLoading && group && !habits.length) {
+  if (group && !habits.length) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
         <Tree weight="fill" className="w-12 h-12 text-sage" />
