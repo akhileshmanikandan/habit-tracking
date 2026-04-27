@@ -16,7 +16,29 @@ export function useAuth() {
       .select("*")
       .eq("id", uid)
       .single();
-    if (profile) setUser(profile);
+
+    if (profile) {
+      setUser(profile);
+    } else {
+      // Profile doesn't exist yet — create it from the auth session
+      const { data: { session } } = await supabase.auth.getSession() as {
+        data: { session: { user: { id: string; user_metadata: Record<string, string> } } | null }
+      };
+      if (session?.user) {
+        const meta = session.user.user_metadata ?? {};
+        const username = (meta.name || meta.full_name || "user") + "_" + uid.slice(0, 4);
+        const { data: newProfile } = await supabase
+          .from("profiles")
+          .insert({
+            id: uid,
+            username,
+            avatar_url: meta.avatar_url || meta.picture || null,
+          })
+          .select()
+          .single();
+        if (newProfile) setUser(newProfile);
+      }
+    }
   }, []);
 
   useEffect(() => {
