@@ -1,0 +1,156 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { Profile, Group } from "@/lib/supabase/types";
+
+export function useAuth() {
+  const [user, setUser] = useState<Profile | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    const getUser = async () => {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      if (authUser) {
+        setUserId(authUser.id);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", authUser.id)
+          .single();
+        if (profile) setUser(profile);
+      }
+      setLoading(false);
+    };
+    getUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+        if (profile) setUser(profile);
+      } else {
+        setUser(null);
+        setUserId(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setUser(null);
+    setUserId(null);
+    window.location.href = "/login";
+  };
+
+  return { user, userId, loading, signOut };
+}
+
+export function useGroup() {
+  const [group, setGroup] = useState<Group | null>(null);
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    const fetchGroup = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: membership } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .single();
+
+      if (membership) {
+        const { data: groupData } = await supabase
+          .from("groups")
+          .select("*")
+          .eq("id", membership.group_id)
+          .single();
+        if (groupData) setGroup(groupData);
+
+        const { data: memberRows } = await supabase
+          .from("group_members")
+          .select("user_id")
+          .eq("group_id", membership.group_id);
+
+        if (memberRows) {
+          const userIds = memberRows.map((m: { user_id: string }) => m.user_id);
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("*")
+            .in("id", userIds);
+          if (profiles) setMembers(profiles);
+        }
+      }
+      setLoading(false);
+    };
+    fetchGroup();
+  }, []);
+
+  const createGroup = async (name: string) => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: new Error("Not authenticated") };
+
+    const { data: newGroup, error } = await supabase
+      .from("groups")
+      .insert({ name })
+      .select()
+      .single();
+
+    if (!error && newGroup) {
+      await supabase
+        .from("group_members")
+        .insert({ group_id: newGroup.id, user_id: user.id });
+      setGroup(newGroup);
+    }
+    return { data: newGroup, error };
+  };
+
+  const joinGroup = async (inviteCode: string) => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: new Error("Not authenticated") };
+
+    const { data: foundGroup } = await supabase
+      .from("groups")
+      .select("*")
+      .eq("invite_code", inviteCode)
+      .single();
+
+    if (!foundGroup) return { error: new Error("Group not found") };
+
+    await supabase
+      .from("group_members")
+      .insert({ group_id: foundGroup.id, user_id: user.id });
+    setGroup(foundGroup);
+    return { data: foundGroup, error: null };
+  };
+
+  return { group, members, loading, createGroup, joinGroup };
+}
