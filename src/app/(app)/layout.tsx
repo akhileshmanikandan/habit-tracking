@@ -26,7 +26,7 @@ function GroupGate({ children }: { children: React.ReactNode }) {
   // Group selected → show app with bottom nav
   return (
     <div className="min-h-screen flex flex-col">
-      <main className="flex-1 pb-24">{children}</main>
+      <main className="flex-1 flex flex-col pb-24">{children}</main>
       <BottomNav />
     </div>
   );

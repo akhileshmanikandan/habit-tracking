@@ -36,7 +36,7 @@ export default function LogPage() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div>
       <LogDrawer
         open={true}
         onOpenChange={(open) => {

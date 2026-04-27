@@ -223,7 +223,7 @@ export default function ForestPage() {
   // Group exists but no habits yet — prompt to create
   if (group && !habits.length) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
+      <div className="flex flex-col items-center justify-center px-6 gap-6 py-20">
         <Tree weight="fill" className="w-12 h-12 text-sage" />
         <h1 className="text-2xl font-bold text-moss">Your forest is empty</h1>
         <p className="text-sm text-earth-light text-center max-w-xs">
@@ -241,9 +241,9 @@ export default function ForestPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col relative">
+    <div className="h-full flex flex-col relative overflow-hidden" style={{ minHeight: 0 }}>
       {/* Forest Canvas */}
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         <ForestCanvas
           plots={plots}
           groupStreakDays={forestData.groupStreakDays}
@@ -300,7 +300,7 @@ export default function ForestPage() {
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="absolute bottom-28 left-4 right-4"
+            className="fixed bottom-36 left-4 right-4 z-40"
           >
             <div className="glass rounded-xl p-3 flex items-center gap-2">
               <Droplets className="w-5 h-5 text-blue-400" />
@@ -314,7 +314,7 @@ export default function ForestPage() {
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={() => setLogDrawerOpen(true)}
-        className="absolute bottom-32 right-4 z-10 w-14 h-14 rounded-2xl bg-moss text-cream shadow-lg shadow-moss/30 flex items-center justify-center safe-area-bottom"
+        className="fixed bottom-28 right-4 z-40 w-14 h-14 rounded-2xl bg-moss text-cream shadow-lg shadow-moss/30 flex items-center justify-center safe-area-bottom"
       >
         <span className="text-2xl">+</span>
       </motion.button>
