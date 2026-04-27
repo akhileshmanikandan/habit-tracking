@@ -223,7 +223,7 @@ export default function ForestPage() {
   // Group exists but no habits yet — prompt to create
   if (group && !habits.length) {
     return (
-      <div className="flex flex-col items-center justify-center px-6 gap-6 py-20">
+      <div className="fixed inset-0 flex flex-col items-center justify-center px-6 gap-6 bg-background z-0">
         <Tree weight="fill" className="w-12 h-12 text-sage" />
         <h1 className="text-2xl font-bold text-moss">Your forest is empty</h1>
         <p className="text-sm text-earth-light text-center max-w-xs">
@@ -241,9 +241,9 @@ export default function ForestPage() {
   }
 
   return (
-    <div className="h-full flex flex-col relative overflow-hidden" style={{ minHeight: 0 }}>
-      {/* Forest Canvas */}
-      <div className="flex-1 min-h-0">
+    <>
+      {/* Full-screen forest canvas — fills entire viewport behind everything */}
+      <div className="fixed inset-0 z-0">
         <ForestCanvas
           plots={plots}
           groupStreakDays={forestData.groupStreakDays}
@@ -255,17 +255,17 @@ export default function ForestPage() {
         />
       </div>
 
-      {/* Status bar overlay */}
-      <div className="fixed top-0 left-0 right-0 pt-[env(safe-area-inset-top)] z-10">
-        <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <div className="bg-white/70 backdrop-blur-md rounded-full px-4 py-2 flex items-center gap-2 border border-moss/10 shadow-sm">
+      {/* Group name pill — top left */}
+      <div className="fixed top-0 left-0 right-0 z-10" style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 12px)" }}>
+        <div className="flex items-center justify-between px-5 pt-2 pb-2">
+          <div className="bg-white/80 backdrop-blur-lg rounded-full px-4 py-2 flex items-center gap-2.5 shadow-md border border-black/5">
             <Tree weight="fill" className="w-4 h-4 text-sage" />
-            <span className="text-sm font-semibold text-moss">
+            <span className="text-sm font-semibold text-moss tracking-tight">
               {group?.name || "Lock In"}
             </span>
           </div>
           {forestData.groupStreakDays > 0 && (
-            <div className="bg-white/70 backdrop-blur-md rounded-full px-3.5 py-2 flex items-center gap-1.5 border border-moss/10 shadow-sm">
+            <div className="bg-white/80 backdrop-blur-lg rounded-full px-3.5 py-2 flex items-center gap-1.5 shadow-md border border-black/5">
               <span className="text-xs">🔥</span>
               <span className="text-xs font-bold text-moss">
                 {forestData.groupStreakDays}d streak
@@ -282,9 +282,9 @@ export default function ForestPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute top-14 left-4 right-4 safe-area-top"
+            className="fixed top-20 left-4 right-4 z-10"
           >
-            <div className="glass rounded-xl p-2.5 text-center">
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl p-2.5 text-center shadow-sm border border-black/5">
               <span className="text-xs font-medium text-moss">
                 🔥 Everyone logged today! The campfire is lit!
               </span>
@@ -300,9 +300,10 @@ export default function ForestPage() {
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-36 left-4 right-4 z-40"
+            className="fixed left-4 right-4 z-40"
+            style={{ bottom: "calc(76px + env(safe-area-inset-bottom, 0px) + 80px)" }}
           >
-            <div className="glass rounded-xl p-3 flex items-center gap-2">
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl p-3 flex items-center gap-2 shadow-md border border-black/5">
               <Droplets className="w-5 h-5 text-blue-400" />
               <span className="text-sm font-medium text-moss">{waterToast}</span>
             </div>
@@ -310,14 +311,17 @@ export default function ForestPage() {
         )}
       </AnimatePresence>
 
-      {/* Quick log FAB — fixed just above bottom nav */}
+      {/* Quick log FAB */}
       <motion.button
-        whileTap={{ scale: 0.9 }}
+        whileTap={{ scale: 0.92 }}
         onClick={() => setLogDrawerOpen(true)}
-        className="fixed z-40 right-5 w-14 h-14 rounded-full bg-moss text-cream shadow-lg shadow-moss/30 flex items-center justify-center"
-        style={{ bottom: "calc(76px + env(safe-area-inset-bottom, 0px) + 12px)" }}
+        className="fixed z-40 right-5 w-14 h-14 rounded-full bg-moss shadow-xl shadow-moss/40 flex items-center justify-center"
+        style={{ bottom: "calc(76px + env(safe-area-inset-bottom, 0px) + 16px)" }}
       >
-        <span className="text-2xl font-light">+</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-cream">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
       </motion.button>
 
       {/* Log Drawer */}
@@ -328,6 +332,6 @@ export default function ForestPage() {
         userId={userId || ""}
         onLog={handleLog}
       />
-    </div>
+    </>
   );
 }
