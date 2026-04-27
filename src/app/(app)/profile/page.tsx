@@ -1,15 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth, useGroup } from "@/lib/hooks/useAuth";
 import { useStreaks } from "@/lib/hooks/useHabits";
-import { SignOut, Copy, Users, Shield, Fire, TreeEvergreen } from "@phosphor-icons/react";
+import { SignOut, Copy, Users, Shield, Fire, TreeEvergreen, Plus, ArrowRight } from "@phosphor-icons/react";
 import { haptics } from "@/lib/utils/haptics";
 
 export default function ProfilePage() {
   const { user, userId, signOut } = useAuth();
-  const { group, members } = useGroup();
+  const { group, members, createGroup, joinGroup } = useGroup();
   const { streaks } = useStreaks(userId || undefined);
+  const [groupName, setGroupName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim()) return;
+    setGroupLoading(true);
+    setGroupError(null);
+    const { error } = await createGroup(groupName.trim());
+    if (error) setGroupError(error.message);
+    setGroupLoading(false);
+    haptics.light();
+  };
+
+  const handleJoinGroup = async () => {
+    if (!inviteCode.trim()) return;
+    setGroupLoading(true);
+    setGroupError(null);
+    const { error } = await joinGroup(inviteCode.trim());
+    if (error) setGroupError(error.message);
+    setGroupLoading(false);
+    haptics.light();
+  };
 
   const totalStreak = streaks.reduce((max, s) => Math.max(max, s.current_streak), 0);
   const totalShields = streaks.reduce((sum, s) => sum + s.shields, 0);
@@ -64,6 +89,70 @@ export default function ProfilePage() {
           <p className="text-[10px] text-earth-light">Shields</p>
         </div>
       </div>
+
+      {/* Create / Join group */}
+      {!group && (
+        <div className="bg-white/60 rounded-2xl border border-white/40 p-4 space-y-4">
+          <h2 className="text-sm font-bold text-moss flex items-center gap-2">
+            <Users weight="fill" className="w-4 h-4" />
+            Get Started with a Group
+          </h2>
+
+          {groupError && (
+            <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{groupError}</p>
+          )}
+
+          {/* Create */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-earth-light">Create a new group</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="Group name"
+                className="flex-1 px-3 py-2 rounded-xl bg-white/80 border border-white/60 text-sm text-moss placeholder:text-earth-light/50 focus:outline-none focus:ring-2 focus:ring-sage/30"
+              />
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={handleCreateGroup}
+                disabled={groupLoading || !groupName.trim()}
+                className="px-3 py-2 rounded-xl bg-moss text-white text-sm font-medium disabled:opacity-40"
+              >
+                <Plus weight="bold" className="w-4 h-4" />
+              </motion.button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-earth-light/20" />
+            <span className="text-[10px] text-earth-light uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-earth-light/20" />
+          </div>
+
+          {/* Join */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-earth-light">Join with invite code</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="Enter invite code"
+                className="flex-1 px-3 py-2 rounded-xl bg-white/80 border border-white/60 text-sm text-moss placeholder:text-earth-light/50 focus:outline-none focus:ring-2 focus:ring-sage/30"
+              />
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={handleJoinGroup}
+                disabled={groupLoading || !inviteCode.trim()}
+                className="px-3 py-2 rounded-xl bg-moss text-white text-sm font-medium disabled:opacity-40"
+              >
+                <ArrowRight weight="bold" className="w-4 h-4" />
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Group info */}
       {group && (
