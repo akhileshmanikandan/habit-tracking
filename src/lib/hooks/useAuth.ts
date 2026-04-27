@@ -115,19 +115,30 @@ export function useGroup() {
     } = await supabase.auth.getUser();
     if (!user) return { error: new Error("Not authenticated") };
 
+    // Insert group (no .select() — avoid RLS timing issues)
     const { data: newGroup, error } = await supabase
       .from("groups")
       .insert({ name })
       .select()
       .single();
 
-    if (!error && newGroup) {
-      await supabase
-        .from("group_members")
-        .insert({ group_id: newGroup.id, user_id: user.id });
-      setGroup(newGroup);
-    }
-    return { data: newGroup, error };
+    if (error || !newGroup) return { data: null, error };
+
+    // Add self as member
+    await supabase
+      .from("group_members")
+      .insert({ group_id: newGroup.id, user_id: user.id });
+
+    // Fetch own profile to populate members
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    setGroup(newGroup);
+    if (profile) setMembers([profile]);
+    return { data: newGroup, error: null };
   };
 
   const joinGroup = async (inviteCode: string) => {
@@ -148,6 +159,19 @@ export function useGroup() {
     await supabase
       .from("group_members")
       .insert({ group_id: foundGroup.id, user_id: user.id });
+    // Fetch all members of the group
+    const { data: memberRows } = await supabase
+      .from("group_members")
+      .select("user_id")
+      .eq("group_id", foundGroup.id);
+    if (memberRows) {
+      const userIds = memberRows.map((m: { user_id: string }) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("id", userIds);
+      if (profiles) setMembers(profiles);
+    }
     setGroup(foundGroup);
     return { data: foundGroup, error: null };
   };

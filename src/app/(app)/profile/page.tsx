@@ -65,7 +65,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Grove info */}
+      {/* Group info */}
       {group && (
         <div className="bg-white/60 rounded-2xl border border-white/40 p-4 space-y-3">
           <div className="flex items-center justify-between">

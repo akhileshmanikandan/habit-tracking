@@ -3,11 +3,11 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Trees, PencilLine, Trophy, User } from "lucide-react";
+import { Trees, ListChecks, Trophy, User } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/forest", label: "Forest", icon: Trees },
-  { href: "/log", label: "Log", icon: PencilLine },
+  { href: "/habits", label: "Habits", icon: ListChecks },
   { href: "/marathon", label: "Marathon", icon: Trophy },
   { href: "/profile", label: "Profile", icon: User },
 ] as const;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth, useGroup } from "@/lib/hooks/useAuth";
 import { useHabits } from "@/lib/hooks/useHabits";
 import { LogDrawer } from "@/components/logging/LogDrawer";
@@ -9,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 const supabase = createClient();
 
 export default function LogPage() {
+  const router = useRouter();
   const { userId } = useAuth();
   const { group } = useGroup();
   const { habits } = useHabits(group?.id);
@@ -33,7 +35,9 @@ export default function LogPage() {
     <div className="min-h-screen">
       <LogDrawer
         open={true}
-        onOpenChange={() => {}}
+        onOpenChange={(open) => {
+          if (!open) router.push("/forest");
+        }}
         habits={myHabits}
         userId={userId || ""}
         onLog={handleLog}

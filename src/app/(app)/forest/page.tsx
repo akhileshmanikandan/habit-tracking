@@ -17,7 +17,7 @@ const supabase = createClient();
 
 export default function ForestPage() {
   const { user, userId } = useAuth();
-  const { group, members, loading: groupLoading } = useGroup();
+  const { group, members, loading: groupLoading, createGroup, joinGroup } = useGroup();
   const { habits } = useHabits(group?.id);
 
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
@@ -213,10 +213,30 @@ export default function ForestPage() {
 
   // Onboarding state: no group yet
   if (!groupLoading && !group) {
-    return <OnboardingView />;
+    return <OnboardingView createGroup={createGroup} joinGroup={joinGroup} />;
   }
 
   const myHabits = habits.filter((h) => h.creator_id === userId);
+
+  // Group exists but no habits yet — prompt to create
+  if (!groupLoading && group && !habits.length) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-6">
+        <Tree weight="fill" className="w-12 h-12 text-sage" />
+        <h1 className="text-2xl font-bold text-moss">Your forest is empty</h1>
+        <p className="text-sm text-earth-light text-center max-w-xs">
+          Create your first habit to start planting trees in your forest!
+        </p>
+        <motion.a
+          href="/habits"
+          whileTap={{ scale: 0.95 }}
+          className="py-3.5 px-8 rounded-xl bg-moss text-cream font-semibold"
+        >
+          Create a Habit
+        </motion.a>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col relative">
@@ -309,22 +329,25 @@ export default function ForestPage() {
   );
 }
 
-function OnboardingView() {
+function OnboardingView({
+  createGroup,
+  joinGroup,
+}: {
+  createGroup: (name: string) => Promise<{ data?: unknown; error?: unknown }>;
+  joinGroup: (code: string) => Promise<{ data?: unknown; error?: unknown }>;
+}) {
   const [mode, setMode] = useState<"choose" | "create" | "join">("choose");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const { createGroup, joinGroup } = useGroup();
 
   const handleCreate = async () => {
     if (!name.trim()) return;
     await createGroup(name.trim());
-    window.location.reload();
   };
 
   const handleJoin = async () => {
     if (!code.trim()) return;
     await joinGroup(code.trim());
-    window.location.reload();
   };
 
   return (
@@ -332,7 +355,7 @@ function OnboardingView() {
       <Tree weight="fill" className="w-12 h-12 text-sage" />
       <h1 className="text-2xl font-bold text-moss">Welcome to Lock In</h1>
       <p className="text-sm text-earth-light text-center max-w-xs">
-        Create a grove with your friends or join an existing one.
+        Start a group with your friends or join an existing one.
       </p>
 
       {mode === "choose" && (
@@ -342,7 +365,7 @@ function OnboardingView() {
             onClick={() => setMode("create")}
             className="py-3.5 rounded-xl bg-moss text-cream font-semibold"
           >
-            Create a Grove
+            Create a Group
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -360,7 +383,7 @@ function OnboardingView() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Grove name (e.g. Team Sprinters)"
+            placeholder="Group name (e.g. Team Sprinters)"
             className="px-4 py-3 rounded-xl bg-white/60 border border-white/40 text-moss font-semibold focus:outline-none focus:ring-2 focus:ring-sage"
             autoFocus
           />
@@ -394,7 +417,7 @@ function OnboardingView() {
             disabled={!code.trim()}
             className="py-3.5 rounded-xl bg-moss text-cream font-semibold disabled:opacity-50"
           >
-            Join Grove
+            Join Group
           </motion.button>
           <button onClick={() => setMode("choose")} className="text-sm text-earth-light">
             ← Back
