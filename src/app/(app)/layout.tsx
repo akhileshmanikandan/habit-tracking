@@ -6,16 +6,14 @@ import { GroupPicker } from "@/components/groups/GroupPicker";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { TreeEvergreen } from "@phosphor-icons/react";
 
-function AppShell({ children }: { children: React.ReactNode }) {
-  const { loading: authLoading } = useAuth();
+function GroupGate({ children }: { children: React.ReactNode }) {
   const { activeGroup, loading: groupLoading } = useGroupContext();
 
-  // Loading state
-  if (authLoading || groupLoading) {
+  if (groupLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <TreeEvergreen weight="fill" className="w-10 h-10 text-sage animate-pulse" />
-        <p className="text-sm text-earth-light">Loading...</p>
+        <p className="text-sm text-earth-light">Loading groups...</p>
       </div>
     );
   }
@@ -35,9 +33,20 @@ function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { userId, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <TreeEvergreen weight="fill" className="w-10 h-10 text-sage animate-pulse" />
+        <p className="text-sm text-earth-light">Loading...</p>
+      </div>
+    );
+  }
+
   return (
-    <GroupProvider>
-      <AppShell>{children}</AppShell>
+    <GroupProvider userId={userId}>
+      <GroupGate>{children}</GroupGate>
     </GroupProvider>
   );
 }

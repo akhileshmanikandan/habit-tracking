@@ -25,7 +25,7 @@ interface GroupContextValue {
 
 const GroupContext = createContext<GroupContextValue | null>(null);
 
-export function GroupProvider({ children }: { children: ReactNode }) {
+export function GroupProvider({ userId, children }: { userId: string | null; children: ReactNode }) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
@@ -33,64 +33,76 @@ export function GroupProvider({ children }: { children: ReactNode }) {
 
   // Fetch members for a given group
   const fetchMembers = useCallback(async (groupId: string) => {
-    const supabase = createClient();
-    const { data: memberRows } = await supabase
-      .from("group_members")
-      .select("user_id")
-      .eq("group_id", groupId);
-    if (memberRows) {
-      const userIds = memberRows.map((m: { user_id: string }) => m.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("id", userIds);
-      if (profiles) setMembers(profiles);
+    try {
+      const supabase = createClient();
+      const { data: memberRows } = await supabase
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", groupId);
+      if (memberRows) {
+        const userIds = memberRows.map((m: { user_id: string }) => m.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", userIds);
+        if (profiles) setMembers(profiles);
+      }
+    } catch (err) {
+      console.error("[GroupContext] fetchMembers error:", err);
     }
   }, []);
 
-  // Initial load: fetch all groups user belongs to
+  // Fetch groups once userId is available (no duplicate getUser call)
   useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
     const fetchGroups = async () => {
       try {
         const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
-          setLoading(false);
-          return;
-        }
 
         // Get all group memberships
         const { data: memberships } = await supabase
           .from("group_members")
           .select("group_id")
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
+        if (cancelled) return;
 
         if (memberships && memberships.length > 0) {
-          const groupIds = memberships.map((m) => m.group_id);
+          const groupIds = memberships.map((m: { group_id: string }) => m.group_id);
           const { data: groupsData } = await supabase
             .from("groups")
             .select("*")
-            .in("id", groupIds);
-          if (groupsData) setGroups(groupsData);
+            .in("id", groupIds) as { data: Group[] | null };
+          if (cancelled) return;
 
-          // Restore last selected group from localStorage
-          const savedGroupId = localStorage.getItem("activeGroupId");
-          const savedGroup = groupsData?.find((g) => g.id === savedGroupId);
-          if (savedGroup) {
-            setActiveGroup(savedGroup);
-            await fetchMembers(savedGroup.id);
+          if (groupsData) {
+            setGroups(groupsData);
+
+            // Restore last selected group from localStorage
+            let savedGroupId: string | null = null;
+            try { savedGroupId = localStorage.getItem("activeGroupId"); } catch {}
+            const savedGroup = groupsData.find((g: Group) => g.id === savedGroupId);
+            if (savedGroup) {
+              setActiveGroup(savedGroup);
+              await fetchMembers(savedGroup.id);
+            }
           }
         }
       } catch (err) {
-        console.error("Failed to fetch groups:", err);
+        console.error("[GroupContext] fetchGroups error:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchGroups();
-  }, [fetchMembers]);
+
+    return () => { cancelled = true; };
+  }, [userId, fetchMembers]);
 
   const selectGroup = useCallback(
     async (groupId: string) => {
@@ -112,11 +124,9 @@ export function GroupProvider({ children }: { children: ReactNode }) {
 
   const createGroup = useCallback(
     async (name: string): Promise<{ data: Group | null; error: Error | null }> => {
+      if (!userId) return { data: null, error: new Error("Not authenticated") };
+
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return { data: null, error: new Error("Not authenticated") };
 
       const { data: newGroup, error } = await supabase
         .from("groups")
@@ -129,7 +139,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
 
       const { error: memberError } = await supabase
         .from("group_members")
-        .insert({ group_id: newGroup.id, user_id: user.id });
+        .insert({ group_id: newGroup.id, user_id: userId });
 
       if (memberError) return { data: null, error: new Error(memberError.message) };
 
@@ -142,22 +152,20 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", userId)
         .single();
       if (profile) setMembers([profile]);
 
       return { data: newGroup, error: null };
     },
-    []
+    [userId]
   );
 
   const joinGroup = useCallback(
     async (inviteCode: string): Promise<{ data: Group | null; error: Error | null }> => {
+      if (!userId) return { data: null, error: new Error("Not authenticated") };
+
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return { data: null, error: new Error("Not authenticated") };
 
       const { data: foundGroup, error: findError } = await supabase
         .from("groups")
@@ -173,13 +181,13 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         .from("group_members")
         .select("group_id")
         .eq("group_id", foundGroup.id)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (!existing) {
         const { error: joinError } = await supabase
           .from("group_members")
-          .insert({ group_id: foundGroup.id, user_id: user.id });
+          .insert({ group_id: foundGroup.id, user_id: userId });
         if (joinError) return { data: null, error: new Error(joinError.message) };
       }
 
@@ -194,7 +202,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
 
       return { data: foundGroup, error: null };
     },
-    [fetchMembers]
+    [userId, fetchMembers]
   );
 
   return (

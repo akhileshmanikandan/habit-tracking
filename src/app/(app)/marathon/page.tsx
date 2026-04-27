@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useGroupContext } from "@/lib/hooks/useGroupContext";
 import { daysUntil } from "@/lib/utils/pace-calculator";
 import { Timer, TrendUp, Users, Ghost } from "@phosphor-icons/react";
-import type { MarathonGoal, Profile } from "@/lib/supabase/types";
+import type { MarathonGoal, Log, Profile } from "@/lib/supabase/types";
 
 interface MemberDistance {
   member: Profile;
@@ -50,7 +50,7 @@ export default function MarathonPage() {
           .select("*, habits!inner(category)")
           .gte("created_at", goals[0].start_date)
           .lte("created_at", goals[0].end_date + "T23:59:59")
-          .eq("habits.category", "running");
+          .eq("habits.category", "running") as { data: Log[] | null };
 
         const distances: MemberDistance[] = members.map((member) => {
           const memberLogs = (logs || []).filter((l) => l.user_id === member.id);

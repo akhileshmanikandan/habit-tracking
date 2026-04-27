@@ -27,7 +27,7 @@ export function useAuth() {
           if (profile) setUser(profile);
         }
       } catch (err) {
-        console.error("Failed to fetch user:", err);
+        console.error("[useAuth] Failed to fetch user:", err);
       } finally {
         setLoading(false);
       }
@@ -36,7 +36,7 @@ export function useAuth() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event: string, session: { user: { id: string } } | null) => {
       if (session?.user) {
         setUserId(session.user.id);
         const { data: profile } = await supabase

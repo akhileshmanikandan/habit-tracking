@@ -8,6 +8,7 @@ import { buildPlotLayouts, type PlotLayout } from "@/lib/forest/isometric-grid";
 import { LogDrawer } from "@/components/logging/LogDrawer";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useGroupContext } from "@/lib/hooks/useGroupContext";
+import type { Habit, Log, Streak } from "@/lib/supabase/types";
 import { useHabits } from "@/lib/hooks/useHabits";
 import { useRealtimeReactions } from "@/lib/hooks/useRealtime";
 import { haptics } from "@/lib/utils/haptics";
@@ -47,7 +48,7 @@ export default function ForestPage() {
       const { data: groupHabits } = await supabase
         .from("habits")
         .select("*")
-        .eq("group_id", group.id);
+        .eq("group_id", group.id) as { data: Habit[] | null };
 
       if (!groupHabits) return;
 
@@ -57,14 +58,14 @@ export default function ForestPage() {
         .from("logs")
         .select("*")
         .in("habit_id", habitIds)
-        .gte("created_at", weekAgo.toISOString());
+        .gte("created_at", weekAgo.toISOString()) as { data: Log[] | null };
 
       // Get streaks
       const memberIds = members.map((m) => m.id);
       const { data: streaks } = await supabase
         .from("streaks")
         .select("*")
-        .in("user_id", memberIds);
+        .in("user_id", memberIds) as { data: Streak[] | null };
 
       // Build data
       const habitsByUser = new Map<string, { habitId: string; category: string; logsThisWeek: number; isDormant: boolean; isGlowing: boolean }[]>();
