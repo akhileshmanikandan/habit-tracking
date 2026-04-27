@@ -256,16 +256,16 @@ export default function ForestPage() {
       </div>
 
       {/* Status bar overlay */}
-      <div className="absolute top-0 left-0 right-0 p-4 safe-area-top z-10">
-        <div className="flex items-center justify-between">
-          <div className="glass rounded-full px-3.5 py-1.5 flex items-center gap-2 border border-white/20 shadow-sm">
+      <div className="fixed top-0 left-0 right-0 pt-[env(safe-area-inset-top)] z-10">
+        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+          <div className="bg-white/70 backdrop-blur-md rounded-full px-4 py-2 flex items-center gap-2 border border-moss/10 shadow-sm">
             <Tree weight="fill" className="w-4 h-4 text-sage" />
             <span className="text-sm font-semibold text-moss">
               {group?.name || "Lock In"}
             </span>
           </div>
           {forestData.groupStreakDays > 0 && (
-            <div className="glass rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-white/20 shadow-sm">
+            <div className="bg-white/70 backdrop-blur-md rounded-full px-3.5 py-2 flex items-center gap-1.5 border border-moss/10 shadow-sm">
               <span className="text-xs">🔥</span>
               <span className="text-xs font-bold text-moss">
                 {forestData.groupStreakDays}d streak
@@ -310,13 +310,14 @@ export default function ForestPage() {
         )}
       </AnimatePresence>
 
-      {/* Quick log FAB — positioned above bottom nav */}
+      {/* Quick log FAB — fixed just above bottom nav */}
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={() => setLogDrawerOpen(true)}
-        className="fixed bottom-28 right-4 z-40 w-14 h-14 rounded-2xl bg-moss text-cream shadow-lg shadow-moss/30 flex items-center justify-center safe-area-bottom"
+        className="fixed z-40 right-5 w-14 h-14 rounded-full bg-moss text-cream shadow-lg shadow-moss/30 flex items-center justify-center"
+        style={{ bottom: "calc(76px + env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
-        <span className="text-2xl">+</span>
+        <span className="text-2xl font-light">+</span>
       </motion.button>
 
       {/* Log Drawer */}
