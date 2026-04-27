@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { gridToIso, TILE_WIDTH, TILE_HEIGHT, type PlotLayout } from "@/lib/forest/isometric-grid";
 import { drawTree } from "@/lib/forest/tree-renderer";
 import { getLighting } from "@/lib/forest/lighting";
@@ -12,7 +12,7 @@ interface ForestCanvasProps {
   plots: PlotLayout[];
   groupStreakDays: number;
   allLoggedToday: boolean;
-  streaksByUser: Map<string, number>; // userId → max streak
+  streaksByUser: Map<string, number>;
   onPlotTap?: (userId: string) => void;
 }
 
@@ -28,13 +28,27 @@ export function ForestCanvas({
   const particlesRef = useRef<ParticleSystem | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
+  // Zoom & pan state (refs to avoid re-renders on every frame)
+  const scaleRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
+  const gestureRef = useRef<{
+    type: "none" | "pan" | "pinch";
+    startX: number;
+    startY: number;
+    startPanX: number;
+    startPanY: number;
+    startDist: number;
+    startScale: number;
+  }>({ type: "none", startX: 0, startY: 0, startPanX: 0, startPanY: 0, startDist: 0, startScale: 1 });
+
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D, width: number, height: number) => {
       const time = Date.now() - startTimeRef.current;
       const lighting = getLighting();
       const tod = getTimeOfDay();
+      const scale = scaleRef.current;
+      const pan = panRef.current;
 
-      // Clear
       ctx.clearRect(0, 0, width, height);
 
       // Background
@@ -64,12 +78,13 @@ export function ForestCanvas({
       }
       ctx.fillRect(0, 0, width, height);
 
-      // Center the grid
+      // Apply zoom + pan, centered on the middle of the canvas
       const centerX = width / 2;
       const centerY = height * 0.35;
 
       ctx.save();
-      ctx.translate(centerX, centerY);
+      ctx.translate(centerX + pan.x, centerY + pan.y);
+      ctx.scale(scale, scale);
 
       // Draw ground tiles for each plot
       for (const plot of plots) {
@@ -81,20 +96,17 @@ export function ForestCanvas({
         }
       }
 
-      // Draw campfire area (center)
       const campfireIso = gridToIso(1.5, 1.5);
 
       // Draw trees for each plot
       for (const plot of plots) {
         const plotCenter = gridToIso(plot.gridCol + 0.5, plot.gridRow + 0.5);
 
-        // Username label
         ctx.fillStyle = tod === "night" ? "#B5D1A8" : "#3A5A28";
         ctx.font = "bold 10px system-ui";
         ctx.textAlign = "center";
         ctx.fillText(plot.username, plotCenter.x, plotCenter.y + 35);
 
-        // Draw trees
         for (const tree of plot.trees) {
           const treeX = plotCenter.x + tree.offsetX;
           const treeY = plotCenter.y + tree.offsetY - 10;
@@ -112,7 +124,6 @@ export function ForestCanvas({
           });
         }
 
-        // Wildlife based on streak
         const maxStreak = streaksByUser.get(plot.userId) || 0;
         if (maxStreak >= 7) {
           const bx = plotCenter.x + Math.sin(time / 2000) * 25;
@@ -137,7 +148,7 @@ export function ForestCanvas({
 
       ctx.restore();
 
-      // Particles (screen space)
+      // Particles (screen space, not affected by zoom)
       if (particlesRef.current) {
         if (groupStreakDays > 5 || tod === "night") {
           particlesRef.current.spawnFireflies(8);
@@ -147,7 +158,6 @@ export function ForestCanvas({
         particlesRef.current.draw(ctx);
       }
 
-      // Canvas overlay for lighting
       ctx.fillStyle = lighting.canvasOverlay;
       ctx.fillRect(0, 0, width, height);
     },
@@ -191,26 +201,90 @@ export function ForestCanvas({
     };
   }, [draw]);
 
-  // Handle tap on canvas
-  const handleCanvasTap = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  // --- Touch gesture handlers for pan & pinch-zoom ---
+  const getTouchDist = (t1: React.Touch, t2: React.Touch) =>
+    Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 2) {
+      // Pinch start
+      const dist = getTouchDist(e.touches[0], e.touches[1]);
+      gestureRef.current = {
+        type: "pinch",
+        startX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        startY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        startPanX: panRef.current.x,
+        startPanY: panRef.current.y,
+        startDist: dist,
+        startScale: scaleRef.current,
+      };
+    } else if (e.touches.length === 1) {
+      // Pan start
+      gestureRef.current = {
+        type: "pan",
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        startPanX: panRef.current.x,
+        startPanY: panRef.current.y,
+        startDist: 0,
+        startScale: scaleRef.current,
+      };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    const g = gestureRef.current;
+    if (g.type === "pinch" && e.touches.length === 2) {
+      e.preventDefault();
+      const dist = getTouchDist(e.touches[0], e.touches[1]);
+      const newScale = Math.min(3, Math.max(0.5, g.startScale * (dist / g.startDist)));
+      scaleRef.current = newScale;
+
+      // Also pan with two-finger drag
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      panRef.current = {
+        x: g.startPanX + (midX - g.startX),
+        y: g.startPanY + (midY - g.startY),
+      };
+    } else if (g.type === "pan" && e.touches.length === 1) {
+      panRef.current = {
+        x: g.startPanX + (e.touches[0].clientX - g.startX),
+        y: g.startPanY + (e.touches[0].clientY - g.startY),
+      };
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    // If it was a quick single-finger tap (not a pan), fire onPlotTap
+    if (gestureRef.current.type === "pan" && e.changedTouches.length === 1) {
+      const dx = e.changedTouches[0].clientX - gestureRef.current.startX;
+      const dy = e.changedTouches[0].clientY - gestureRef.current.startY;
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+        firePlotTap(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      }
+    }
+    gestureRef.current = { ...gestureRef.current, type: "none" };
+  };
+
+  // Mouse wheel zoom (desktop)
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    scaleRef.current = Math.min(3, Math.max(0.5, scaleRef.current + delta));
+  };
+
+  // Shared plot-tap logic
+  const firePlotTap = (clientX: number, clientY: number) => {
     if (!onPlotTap) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const rect = canvas.getBoundingClientRect();
-    let clientX: number, clientY: number;
-    if ("touches" in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
+    const scale = scaleRef.current;
+    const pan = panRef.current;
+    const x = (clientX - rect.left - rect.width / 2 - pan.x) / scale;
+    const y = (clientY - rect.top - rect.height * 0.35 - pan.y) / scale;
 
-    const x = clientX - rect.left - rect.width / 2;
-    const y = clientY - rect.top - rect.height * 0.35;
-
-    // Find closest plot
     let closestUserId = "";
     let closestDist = Infinity;
     for (const plot of plots) {
@@ -221,16 +295,23 @@ export function ForestCanvas({
         closestUserId = plot.userId;
       }
     }
-
     if (closestUserId) onPlotTap(closestUserId);
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    firePlotTap(e.clientX, e.clientY);
   };
 
   return (
     <canvas
       ref={canvasRef}
-      className="w-full h-full touch-none"
-      onClick={handleCanvasTap}
-      onTouchStart={handleCanvasTap}
+      className="w-full h-full"
+      style={{ touchAction: "none" }}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onWheel={handleWheel}
     />
   );
 }

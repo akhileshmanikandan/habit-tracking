@@ -256,16 +256,16 @@ export default function ForestPage() {
       </div>
 
       {/* Status bar overlay */}
-      <div className="absolute top-0 left-0 right-0 p-4 safe-area-top">
+      <div className="absolute top-0 left-0 right-0 p-4 safe-area-top z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Tree weight="fill" className="w-5 h-5 text-sage" />
-            <span className="text-sm font-bold text-moss">
+          <div className="glass rounded-full px-3.5 py-1.5 flex items-center gap-2 border border-white/20 shadow-sm">
+            <Tree weight="fill" className="w-4 h-4 text-sage" />
+            <span className="text-sm font-semibold text-moss">
               {group?.name || "Lock In"}
             </span>
           </div>
           {forestData.groupStreakDays > 0 && (
-            <div className="glass rounded-full px-3 py-1 flex items-center gap-1.5">
+            <div className="glass rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-white/20 shadow-sm">
               <span className="text-xs">🔥</span>
               <span className="text-xs font-bold text-moss">
                 {forestData.groupStreakDays}d streak
@@ -310,11 +310,11 @@ export default function ForestPage() {
         )}
       </AnimatePresence>
 
-      {/* Quick log FAB */}
+      {/* Quick log FAB — positioned above bottom nav */}
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={() => setLogDrawerOpen(true)}
-        className="absolute bottom-28 right-4 w-14 h-14 rounded-2xl bg-moss text-cream shadow-lg shadow-moss/30 flex items-center justify-center"
+        className="absolute bottom-32 right-4 z-10 w-14 h-14 rounded-2xl bg-moss text-cream shadow-lg shadow-moss/30 flex items-center justify-center safe-area-bottom"
       >
         <span className="text-2xl">+</span>
       </motion.button>
