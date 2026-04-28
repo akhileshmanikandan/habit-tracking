@@ -27,7 +27,7 @@ export function ForestCanvas({
   const animFrameRef = useRef<number>(0);
   const particlesRef = useRef<ParticleSystem | null>(null);
   const startTimeRef = useRef<number>(Date.now());
-  const wateringRef = useRef<{ x: number; y: number; framesLeft: number } | null>(null);
+  const wateringRef = useRef<{ targetUserId: string; startTime: number } | null>(null);
 
   // Zoom & pan state (refs to avoid re-renders on every frame)
   const scaleRef = useRef(1);
@@ -147,13 +147,23 @@ export function ForestCanvas({
         }
       }
 
-      // Water animation particles (in world space, before ctx.restore)
-      if (wateringRef.current && wateringRef.current.framesLeft > 0) {
-        if (particlesRef.current) {
-          particlesRef.current.spawnWaterDrops(wateringRef.current.x, wateringRef.current.y, 3);
+      // Watering can animation (drawn in world space)
+      if (wateringRef.current) {
+        const elapsed = Date.now() - wateringRef.current.startTime;
+        const duration = 1800; // 1.8 seconds total
+        if (elapsed < duration) {
+          const targetPlot = plots.find((p) => p.userId === wateringRef.current!.targetUserId);
+          if (targetPlot) {
+            const plotCenter = gridToIso(targetPlot.gridCol + 0.5, targetPlot.gridRow + 0.5);
+            // Pick the first tree, or fall back to plot center
+            const tree = targetPlot.trees[0];
+            const treeX = tree ? plotCenter.x + tree.offsetX : plotCenter.x;
+            const treeY = tree ? plotCenter.y + tree.offsetY - 10 : plotCenter.y - 10;
+            drawWateringAnimation(ctx, treeX, treeY, elapsed, duration);
+          }
+        } else {
+          wateringRef.current = null;
         }
-        wateringRef.current.framesLeft--;
-        if (wateringRef.current.framesLeft <= 0) wateringRef.current = null;
       }
 
       ctx.restore();
@@ -306,15 +316,8 @@ export function ForestCanvas({
       }
     }
     if (closestUserId) {
-      // Trigger water animation at the tapped plot
-      const tappedPlot = plots.find((p) => p.userId === closestUserId);
-      if (tappedPlot) {
-        const plotCenter = gridToIso(tappedPlot.gridCol + 0.5, tappedPlot.gridRow + 0.5);
-        // Convert world coords to screen coords for particles
-        const screenX = plotCenter.x * scale + canvas.getBoundingClientRect().width / 2 + pan.x;
-        const screenY = plotCenter.y * scale + canvas.getBoundingClientRect().height * 0.35 + pan.y;
-        wateringRef.current = { x: screenX, y: screenY, framesLeft: 45 };
-      }
+      // Trigger watering can animation at the tapped plot
+      wateringRef.current = { targetUserId: closestUserId, startTime: Date.now() };
       onPlotTap(closestUserId);
     }
   };
@@ -388,4 +391,137 @@ function drawCampfire(ctx: CanvasRenderingContext2D, x: number, y: number, time:
   glowGrad.addColorStop(1, "rgba(255, 150, 50, 0)");
   ctx.fillStyle = glowGrad;
   ctx.fillRect(x - 30, y - 35, 60, 60);
+}
+
+/**
+ * Draws a watering can pouring water onto a specific tree position.
+ * The can appears above-right, tilts to pour, water streams down, then fades out.
+ */
+function drawWateringAnimation(
+  ctx: CanvasRenderingContext2D,
+  treeX: number,
+  treeY: number,
+  elapsed: number,
+  duration: number
+) {
+  const progress = elapsed / duration; // 0 → 1
+
+  // Phases: appear (0-0.15), pour (0.15-0.75), fade (0.75-1)
+  let alpha: number;
+  let tiltAngle: number;
+  let pourIntensity: number;
+
+  if (progress < 0.15) {
+    // Appear: slide in and start tilting
+    const t = progress / 0.15;
+    alpha = t;
+    tiltAngle = t * 0.4;
+    pourIntensity = 0;
+  } else if (progress < 0.75) {
+    // Pouring
+    const t = (progress - 0.15) / 0.6;
+    alpha = 1;
+    tiltAngle = 0.4 + Math.sin(t * Math.PI * 3) * 0.05; // gentle wobble
+    pourIntensity = 1;
+  } else {
+    // Fade out and tilt back
+    const t = (progress - 0.75) / 0.25;
+    alpha = 1 - t;
+    tiltAngle = 0.4 * (1 - t);
+    pourIntensity = 1 - t;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Watering can position: above and to the right of tree
+  const canX = treeX + 18;
+  const canY = treeY - 35;
+
+  // Draw watering can (tilted)
+  ctx.save();
+  ctx.translate(canX, canY);
+  ctx.rotate(-tiltAngle);
+
+  // Can body
+  ctx.fillStyle = "#7B8E6B";
+  ctx.beginPath();
+  ctx.roundRect(-7, -4, 14, 10, 2);
+  ctx.fill();
+
+  // Handle
+  ctx.strokeStyle = "#5C6B4E";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, -7, 5, Math.PI * 0.2, Math.PI * 0.8);
+  ctx.stroke();
+
+  // Spout
+  ctx.fillStyle = "#6B7D5B";
+  ctx.beginPath();
+  ctx.moveTo(-7, -2);
+  ctx.lineTo(-14, -6);
+  ctx.lineTo(-14, -4);
+  ctx.lineTo(-7, 1);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+
+  // Water stream from spout tip to tree base
+  if (pourIntensity > 0) {
+    // Spout tip in world space (accounting for tilt)
+    const spoutX = canX - 14 * Math.cos(tiltAngle) - (-5) * Math.sin(tiltAngle);
+    const spoutY = canY + 14 * Math.sin(tiltAngle) - 5 * Math.cos(tiltAngle);
+    const landY = treeY + 5; // base of tree
+
+    // Main water stream — a gentle curved pour
+    ctx.strokeStyle = `rgba(100, 181, 246, ${0.6 * pourIntensity})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(spoutX, spoutY);
+    ctx.quadraticCurveTo(
+      spoutX - 4,
+      (spoutY + landY) / 2,
+      treeX - 2,
+      landY
+    );
+    ctx.stroke();
+
+    // A second thinner stream slightly offset
+    ctx.strokeStyle = `rgba(144, 202, 249, ${0.4 * pourIntensity})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(spoutX + 1, spoutY + 1);
+    ctx.quadraticCurveTo(
+      spoutX - 2,
+      (spoutY + landY) / 2 + 3,
+      treeX + 1,
+      landY
+    );
+    ctx.stroke();
+
+    // Small splash droplets at the landing point
+    const splashTime = elapsed * 0.008;
+    ctx.fillStyle = `rgba(100, 181, 246, ${0.5 * pourIntensity})`;
+    for (let i = 0; i < 3; i++) {
+      const angle = (splashTime + i * 2.1) % (Math.PI * 2);
+      const dist = 3 + Math.sin(splashTime * 2 + i) * 2;
+      const dx = Math.cos(angle) * dist;
+      const dy = -Math.abs(Math.sin(angle) * dist * 0.5);
+      ctx.beginPath();
+      ctx.arc(treeX + dx, landY + dy, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Soft wet glow at the tree base
+    const glowRadius = 12 * pourIntensity;
+    const glow = ctx.createRadialGradient(treeX, landY, 1, treeX, landY, glowRadius);
+    glow.addColorStop(0, `rgba(100, 181, 246, ${0.15 * pourIntensity})`);
+    glow.addColorStop(1, "rgba(100, 181, 246, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(treeX - glowRadius, landY - glowRadius, glowRadius * 2, glowRadius * 2);
+  }
+
+  ctx.restore();
 }

@@ -9,7 +9,7 @@ export interface Particle {
   maxLife: number;
   size: number;
   color: string;
-  type: "firefly" | "leaf" | "spark" | "water";
+  type: "firefly" | "leaf" | "spark";
 }
 
 export class ParticleSystem {
@@ -78,22 +78,6 @@ export class ParticleSystem {
     }
   }
 
-  spawnWaterDrops(cx: number, cy: number, count: number) {
-    for (let i = 0; i < count; i++) {
-      this.particles.push({
-        x: cx + (Math.random() - 0.5) * 60,
-        y: cy - 40 - Math.random() * 80,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: 1.5 + Math.random() * 2,
-        life: Math.random() * 500,
-        maxLife: 1500 + Math.random() * 1000,
-        size: 1.5 + Math.random() * 2,
-        color: ["#64B5F6", "#42A5F5", "#90CAF9", "#BBDEFB"][Math.floor(Math.random() * 4)],
-        type: "water",
-      });
-    }
-  }
-
   update(dt: number) {
     this.particles = this.particles.filter((p) => {
       p.life += dt;
@@ -111,11 +95,6 @@ export class ParticleSystem {
         p.x += p.vx;
         p.y += p.vy;
         p.vy += 0.01; // slight deceleration
-      } else if (p.type === "water") {
-        // Water drops — fall down with slight sway
-        p.x += p.vx + Math.sin(p.life / 300) * 0.3;
-        p.y += p.vy;
-        p.vy += 0.05; // gravity
       }
 
       return true;
@@ -152,19 +131,11 @@ export class ParticleSystem {
         ctx.beginPath();
         ctx.ellipse(p.x, p.y, p.size, p.size * 0.6, progress * Math.PI, 0, Math.PI * 2);
         ctx.fill();
-      } else if (p.type === "spark") {
+      } else {
         // Spark dot
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * (1 - progress), 0, Math.PI * 2);
         ctx.fill();
-      } else if (p.type === "water") {
-        // Water droplet — teardrop shape
-        ctx.shadowColor = "#42A5F5";
-        ctx.shadowBlur = 4;
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, p.size * 0.6, p.size, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
       }
     }
     ctx.globalAlpha = 1;
