@@ -13,7 +13,7 @@ import { useHabits } from "@/lib/hooks/useHabits";
 import { useRealtimeReactions } from "@/lib/hooks/useRealtime";
 import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 import { haptics } from "@/lib/utils/haptics";
-import { Droplets } from "lucide-react";
+import { Droplets, RefreshCw } from "lucide-react";
 import { Tree } from "@phosphor-icons/react";
 
 export default function ForestPage() {
@@ -23,6 +23,7 @@ export default function ForestPage() {
 
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
   const [waterToast, setWaterToast] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [forestData, setForestData] = useState<{
     habitsByUser: Map<string, { habitId: string; category: string; logsThisWeek: number; isDormant: boolean; isGlowing: boolean }[]>;
     streaksByUser: Map<string, number>;
@@ -36,11 +37,9 @@ export default function ForestPage() {
   });
 
   // Fetch forest data: logs per habit per user for the past week
-  useEffect(() => {
+  const fetchForestData = useCallback(async () => {
     if (!group || members.length === 0) return;
-
-    const fetchForestData = async () => {
-      const supabase = createClient();
+    const supabase = createClient();
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       const today = new Date().toISOString().split("T")[0];
@@ -157,12 +156,18 @@ export default function ForestPage() {
         allLoggedToday,
         groupStreakDays: isFinite(groupStreakDays) ? groupStreakDays : 0,
       });
-    };
-
-    fetchForestData();
   }, [group, members, userId]);
 
-  // Build plot layouts
+  useEffect(() => {
+    fetchForestData();
+  }, [fetchForestData]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchForestData();
+    haptics.light();
+    setRefreshing(false);
+  };
   const plots = useMemo<PlotLayout[]>(() => {
     if (members.length === 0) return [];
     return buildPlotLayouts(
@@ -283,6 +288,16 @@ export default function ForestPage() {
               </span>
             </div>
           )}
+          <motion.button
+            whileTap={{ scale: 0.85 }}
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="bg-white/80 backdrop-blur-lg rounded-full w-9 h-9 flex items-center justify-center shadow-md border border-black/5"
+          >
+            <RefreshCw
+              className={`w-4 h-4 text-moss ${refreshing ? "animate-spin" : ""}`}
+            />
+          </motion.button>
         </div>
       </div>
 
