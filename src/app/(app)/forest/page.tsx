@@ -11,6 +11,7 @@ import { useGroupContext } from "@/lib/hooks/useGroupContext";
 import type { Habit, Log, Streak } from "@/lib/supabase/types";
 import { useHabits } from "@/lib/hooks/useHabits";
 import { useRealtimeReactions } from "@/lib/hooks/useRealtime";
+import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 import { haptics } from "@/lib/utils/haptics";
 import { Droplets } from "lucide-react";
 import { Tree } from "@phosphor-icons/react";
@@ -185,6 +186,9 @@ export default function ForestPage() {
 
   useRealtimeReactions(userId, handleReaction);
 
+  // Register for push notifications
+  usePushNotifications(userId);
+
   // Water a friend's plot
   const handleWater = async (targetUserId: string) => {
     if (!userId || targetUserId === userId) return;
@@ -195,6 +199,13 @@ export default function ForestPage() {
       type: "water",
     });
     haptics.light();
+
+    // Send push notification to the target user
+    fetch("/api/notify-water", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to_user_id: targetUserId }),
+    }).catch(() => {});
   };
 
   // Log handler

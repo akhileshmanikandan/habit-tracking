@@ -27,6 +27,7 @@ export function ForestCanvas({
   const animFrameRef = useRef<number>(0);
   const particlesRef = useRef<ParticleSystem | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+  const wateringRef = useRef<{ x: number; y: number; framesLeft: number } | null>(null);
 
   // Zoom & pan state (refs to avoid re-renders on every frame)
   const scaleRef = useRef(1);
@@ -144,6 +145,15 @@ export function ForestCanvas({
         if (particlesRef.current) {
           particlesRef.current.spawnCampfireSparks(campfireIso.x, campfireIso.y - 5, 6);
         }
+      }
+
+      // Water animation particles (in world space, before ctx.restore)
+      if (wateringRef.current && wateringRef.current.framesLeft > 0) {
+        if (particlesRef.current) {
+          particlesRef.current.spawnWaterDrops(wateringRef.current.x, wateringRef.current.y, 3);
+        }
+        wateringRef.current.framesLeft--;
+        if (wateringRef.current.framesLeft <= 0) wateringRef.current = null;
       }
 
       ctx.restore();
@@ -295,7 +305,18 @@ export function ForestCanvas({
         closestUserId = plot.userId;
       }
     }
-    if (closestUserId) onPlotTap(closestUserId);
+    if (closestUserId) {
+      // Trigger water animation at the tapped plot
+      const tappedPlot = plots.find((p) => p.userId === closestUserId);
+      if (tappedPlot) {
+        const plotCenter = gridToIso(tappedPlot.gridCol + 0.5, tappedPlot.gridRow + 0.5);
+        // Convert world coords to screen coords for particles
+        const screenX = plotCenter.x * scale + canvas.getBoundingClientRect().width / 2 + pan.x;
+        const screenY = plotCenter.y * scale + canvas.getBoundingClientRect().height * 0.35 + pan.y;
+        wateringRef.current = { x: screenX, y: screenY, framesLeft: 45 };
+      }
+      onPlotTap(closestUserId);
+    }
   };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
